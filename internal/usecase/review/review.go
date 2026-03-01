@@ -177,26 +177,26 @@ func (u *Usecase) StartDueRound(ctx context.Context, userID int64) (*domain.Revi
 
 	hasReviewWords, err := u.wordStateRepo.HasReviewWords(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
+		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
 	}
 	if !hasReviewWords {
-		return nil, "", domain.ErrEmptyReviewWordsList
+		return nil, dictionaryID, domain.ErrEmptyReviewWordsList
 	}
 
 	now := time.Now()
 	words, err := u.wordStateRepo.ListDueReviewWords(ctx, userID, dictionaryID, now)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
+		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
 	}
 	if len(words) == 0 {
-		return nil, "", domain.ErrNoWordsDueForReview
+		return nil, dictionaryID, domain.ErrNoWordsDueForReview
 	}
 
 	u.setSession(userID, dictionaryID, words)
 
 	nextW, err := u.nextWord(userID)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
+		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nextW, dictionaryID, nil

@@ -14,7 +14,6 @@ type ReviewUIState int
 const (
 	ReviewUIUnknown ReviewUIState = iota
 	ReviewUIMainMenu
-	ReviewUILearnMenu
 	ReviewUINoDue
 	ReviewUIDone
 )
@@ -64,6 +63,10 @@ func SendReviewMappedError(c tele.Context, mapped *ReviewUIResult, dictionaryID 
 	case ReviewUIMainMenu:
 		return c.Send(mapped.msg, ui.BuildMainMenuReplyKb())
 	case ReviewUINoDue:
+		if dictionaryID == "" {
+			return c.Send(mapped.msg, ui.BuildMainMenuReplyKb())
+		}
+
 		return c.Send(
 			mapped.msg,
 			&tele.SendOptions{ReplyMarkup: ui.BuildReviewForceInlineKb(dictionaryID)},
