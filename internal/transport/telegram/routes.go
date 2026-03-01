@@ -31,8 +31,11 @@ type Handlers interface {
 	LearningAction(c tele.Context) error
 
 	// Review
-	Review(c tele.Context) error
-	RateCallback(c tele.Context) error
+	ReviewByDictNum(c tele.Context) error
+	ReviewByDictID(c tele.Context) error
+	ReviewAction(c tele.Context) error
+	ReviewForce(c tele.Context) error
+	ReviewForceByCallback(c tele.Context) error
 }
 
 func (t *Server) InitRoutes(_ context.Context, h Handlers) {
@@ -62,10 +65,18 @@ func (t *Server) InitRoutes(_ context.Context, h Handlers) {
 	t.bot.Handle(ui.LearnAddText, h.LearningAction)
 	t.bot.Handle(ui.LearnBlockText, h.LearningAction)
 	t.bot.Handle(ui.LearnReviewText, h.LearningAction)
-	t.bot.Handle(ui.LearnBackText, h.LearningAction)
+	t.bot.Handle(ui.ToMainMenuText, h.LearningAction)
 
 	// Review
-	t.bot.Handle("/review", h.Review)
-	t.bot.Handle(&tele.InlineButton{Unique: "dict_review"}, h.Review)
-	t.bot.Handle(&tele.InlineButton{Unique: "rate"}, h.RateCallback)
+	t.bot.Handle("/review", h.ReviewByDictNum)
+	t.bot.Handle(&tele.InlineButton{Unique: "dict_review"}, h.ReviewByDictID)
+	t.bot.Handle(ui.ReviewRestartText, h.ReviewForce)
+	t.bot.Handle(&tele.InlineButton{Unique: "review_force"}, h.ReviewForceByCallback)
+	t.bot.Handle(ui.ReviewStartText, h.ReviewAction)
+	t.bot.Handle(ui.ReviewStopText, h.ReviewAction)
+	t.bot.Handle(ui.ToMainMenuText, h.ReviewAction)
+	t.bot.Handle(ui.ReviewRate1Text, h.ReviewAction)
+	t.bot.Handle(ui.ReviewRate2Text, h.ReviewAction)
+	t.bot.Handle(ui.ReviewRate3Text, h.ReviewAction)
+	t.bot.Handle(ui.ReviewRate4Text, h.ReviewAction)
 }

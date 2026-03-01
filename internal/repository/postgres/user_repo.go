@@ -27,18 +27,19 @@ func NewUserRepo(db *sql.DB, parentLogger *zerolog.Logger) *UserRepo {
 	}
 }
 
-func (r *UserRepo) CreateUser(ctx context.Context, id int64) error {
+func (r *UserRepo) CreateUser(ctx context.Context, id int64, username string) error {
 	const op = "CreateUser"
 
 	const query = `
-		INSERT INTO users (tg_id)
-		VALUES ($1)
-		ON CONFLICT (tg_id) DO NOTHING;
+		INSERT INTO users (tg_id, username, created_at)
+		VALUES ($1, NULLIF($2, ''), now())
+		ON CONFLICT (tg_id) DO UPDATE
+		SET username = COALESCE(EXCLUDED.username, users.username),
+			created_at = COALESCE(users.created_at, EXCLUDED.created_at);
 	`
 
-	_, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+	if _, err := r.db.ExecContext(ctx, query, id, username); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
@@ -54,12 +55,12 @@ func (r *UserRepo) DeleteUser(ctx context.Context, id int64) error {
 
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	if rows == 0 {
@@ -82,7 +83,7 @@ func (r *UserRepo) SetActiveDictionaryID(ctx context.Context, userID int64, dict
 
 	_, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
@@ -100,11 +101,12 @@ func (r *UserRepo) GetActiveDictionaryID(ctx context.Context, userID int64) (str
 	var dictionaryID string
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&dictionaryID)
 	if err != nil {
+		// TODO: return error
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
 
-		return "", fmt.Errorf("%s failed: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return dictionaryID, nil
@@ -121,7 +123,7 @@ func (r *UserRepo) ClearActiveDictionaryID(ctx context.Context, userID int64) er
 
 	_, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil

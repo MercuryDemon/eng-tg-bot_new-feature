@@ -13,6 +13,7 @@ import (
 	"github.com/krezefal/eng-tg-bot/internal/usecase/catalog"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/learning"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/onboarding"
+	"github.com/krezefal/eng-tg-bot/internal/usecase/review"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/subscription"
 )
 
@@ -47,14 +48,14 @@ func New(ctx context.Context, logger *zerolog.Logger) (*App, error) {
 	catalogUC := catalog.NewUsecase(dictRepo, subsRepo, logger)
 	subscUC := subscription.NewUsecase(userRepo, dictRepo, subsRepo, logger)
 	learningUC := learning.NewUsecase(userRepo, dictRepo, subsRepo, wordsStateRepo, logger)
-	//reviewUC := usecase.NewReviewUsecase(wordStateRepo, logger)
+	reviewUC := review.NewUsecase(userRepo, dictRepo, subsRepo, wordsStateRepo, logger)
 
 	handlers := telegram.NewHandler(
 		onboardUC,
 		catalogUC,
 		subscUC,
 		learningUC,
-		nil,
+		reviewUC,
 		logger,
 	)
 

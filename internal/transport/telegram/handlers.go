@@ -50,12 +50,12 @@ func NewHandler(
 	if subsUC == nil {
 		panic("SubscriptionUsecase cannot be nil")
 	}
-	//if learnUC == nil {
-	//	panic("LearningUsecase cannot be nil")
-	//}
-	//if reviewUC == nil {
-	//	panic("ReviewUsecase cannot be nil")
-	//}
+	if learnUC == nil {
+		panic("LearningUsecase cannot be nil")
+	}
+	if reviewUC == nil {
+		panic("ReviewUsecase cannot be nil")
+	}
 
 	logger := parentLogger.With().Str("component", "telegram_handler").Logger()
 
@@ -88,7 +88,7 @@ func (h *BotHandlers) Start(c tele.Context) error {
 
 	ctxLogger.Debug().Msgf("handling %s", op)
 
-	if err := h.onboardUC.Start(ctx, userID); err != nil {
+	if err := h.onboardUC.Start(ctx, userID, username); err != nil {
 		ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
@@ -347,7 +347,7 @@ func (h *BotHandlers) Subscribe(c tele.Context) error {
 
 	ctxLogger = ctxLogger.With().Str("dictionary_id", dictionaryID).Logger()
 
-	if err := h.subsUC.Subscribe(ctx, userID, dictionaryID); err != nil {
+	if err := h.subsUC.Subscribe(ctx, userID, username, dictionaryID); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrDictionaryNotFound):
 			// TODO: alert here
@@ -684,8 +684,40 @@ func (h *BotHandlers) LearningAction(c tele.Context) error {
 	case ui.LearnBlockText:
 		return h.handleLearningDecision(ctx, userID, h.learnUC.BlockCurrentWord, ctxLogger, op, c)
 	case ui.LearnReviewText:
-		return c.Send(ui.LearnReviewWIPMsg, ui.BuildLearningReplyKb())
-	case ui.LearnBackText:
+		// TODO: fix getting dictionary_id from active dictionary and then
+		// setting it again in h.reviewUC.PrepareByDictionaryID
+		dictionaryID, err := h.learnUC.ActiveDictionaryID(ctx, userID)
+		if err != nil {
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+		if dictionaryID == "" {
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to define active dictionary", op)
+
+			return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		if err = h.reviewUC.PrepareByDictionaryID(ctx, userID, dictionaryID); err != nil {
+			mapped := mapper.MapReviewErrorToUI(err)
+			if mapped.State() != mapper.ReviewUIUnknown {
+				ctxLogger.Debug().
+					Err(err).
+					Str("dictionary_id", dictionaryID).
+					Msgf("%s handled with mapped review error", op)
+
+				return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+			}
+
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		return c.Send(ui.ReviewIntroMsg, ui.BuildReviewIntroReplyKb())
+	case ui.ToMainMenuText:
 		if err := h.learnUC.Back(ctx, userID); err != nil {
 			ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
@@ -708,7 +740,18 @@ func (h *BotHandlers) handleLearningDecision(
 ) error {
 	word, err := decisionFn(ctx, userID)
 	if err != nil {
-		dictionaryID, _ := h.learnUC.ActiveDictionaryID(ctx, userID)
+		dictionaryID, errActDict := h.learnUC.ActiveDictionaryID(ctx, userID)
+		if errActDict != nil {
+			ctxLogger.Error().Err(errActDict).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+		if dictionaryID == "" {
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to define active dictionary", op)
+
+			return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
+		}
 
 		mapped := mapper.MapLearningErrorToUI(err)
 		if mapped.State() != mapper.LearningUIUnknown {
@@ -734,24 +777,336 @@ func (h *BotHandlers) handleLearningDecision(
 	)
 }
 
-func (h *BotHandlers) Review(c tele.Context) error {
+func (h *BotHandlers) ReviewByDictNum(c tele.Context) error {
+	const op = "ReviewByDictNum"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
 	if c.Callback() != nil {
 		defer func() {
 			_ = c.Respond()
 		}()
 	}
 
-	return c.Send("WIP")
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
 
-	//args := c.Args()
-	//if len(args) == 0 {
-	//	return c.Send("Usage: /repeat <vocabulary>")
-	//}
-	//return c.Send(strings.ToUpper(args[0]))
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	args := c.Args()
+	if len(args) != 1 {
+		ctxLogger.Debug().Int("args", len(args)).Msgf("%s: incorrect num of args", op)
+
+		return c.Send(ui.ReviewUsageMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	trimmed := strings.Trim(strings.TrimSpace(args[0]), "<>")
+	number, convErr := strconv.Atoi(trimmed)
+	if convErr != nil {
+		ctxLogger.Debug().
+			Err(convErr).
+			Str("args[0]", args[0]).
+			Msgf("%s: error converting arg to int", op)
+
+		return c.Send(ui.ReviewUsageMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	dictionaryID, err := h.reviewUC.PrepareByDictionaryNumber(ctx, userID, number)
+	if err != nil {
+		mapped := mapper.MapReviewErrorToUI(err)
+		if mapped.State() != mapper.ReviewUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+		}
+
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(ui.ReviewIntroMsg, ui.BuildReviewIntroReplyKb())
 }
 
-func (h *BotHandlers) RateCallback(c tele.Context) error {
-	return c.Send("WIP")
+func (h *BotHandlers) ReviewByDictID(c tele.Context) error {
+	const op = "ReviewByDictID"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	err := h.reviewUC.PrepareByDictionaryID(ctx, userID, dictionaryID)
+	if err != nil {
+		mapped := mapper.MapReviewErrorToUI(err)
+		if mapped.State() != mapper.ReviewUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+		}
+
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(ui.ReviewIntroMsg, ui.BuildReviewIntroReplyKb())
+}
+
+func (h *BotHandlers) ReviewForce(c tele.Context) error {
+	const op = "ReviewForce"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID, err := h.reviewUC.ActiveDictionaryID(ctx, userID)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+	if dictionaryID == "" {
+		ctxLogger.Debug().Msgf("%s: active dictionary is empty", op)
+
+		return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	word, err := h.reviewUC.StartForceRound(ctx, userID, dictionaryID)
+	if err != nil {
+		mapped := mapper.MapReviewErrorToUI(err)
+		if mapped.State() != mapper.ReviewUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+		}
+
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(
+		ui.FormatReviewWordCard(word),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildReviewRateReplyKb(),
+		},
+	)
+}
+
+func (h *BotHandlers) ReviewForceByCallback(c tele.Context) error {
+	const op = "ReviewForceByCallback"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	word, err := h.reviewUC.StartForceRound(ctx, userID, dictionaryID)
+	if err != nil {
+		mapped := mapper.MapReviewErrorToUI(err)
+		if mapped.State() != mapper.ReviewUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+		}
+
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(
+		ui.FormatReviewWordCard(word),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildReviewRateReplyKb(),
+		},
+	)
+}
+
+func (h *BotHandlers) ReviewAction(c tele.Context) error {
+	const op = "ReviewAction"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	switch c.Text() {
+	case ui.ReviewStartText:
+		word, dictionaryID, err := h.reviewUC.StartDueRound(ctx, userID)
+		if err != nil {
+			mapped := mapper.MapReviewErrorToUI(err)
+			if mapped.State() != mapper.ReviewUIUnknown {
+				ctxLogger.Debug().
+					Err(err).
+					Str("dictionary_id", dictionaryID).
+					Msgf("%s handled with mapped review error", op)
+
+				return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+			}
+
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		return c.Send(
+			ui.FormatReviewWordCard(word),
+			&tele.SendOptions{
+				ParseMode:   tele.ModeHTML,
+				ReplyMarkup: ui.BuildReviewRateReplyKb(),
+			},
+		)
+
+	case ui.ToMainMenuText, ui.ReviewStopText:
+		if err := h.reviewUC.Stop(ctx, userID); err != nil {
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		return c.Send(ui.ToMainMenuMsg, ui.BuildMainMenuReplyKb())
+
+	case ui.ReviewRate1Text, ui.ReviewRate2Text, ui.ReviewRate3Text, ui.ReviewRate4Text:
+		grade, ok := mapper.ReviewGradeByText[c.Text()]
+		if !ok {
+			// TODO: alert here
+			ctxLogger.Error().Msgf("%s: error mapping user text %s on SM2 grade", op, c.Text())
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		word, dictionaryID, err := h.reviewUC.RateCurrent(ctx, userID, grade)
+		if err != nil {
+			mapped := mapper.MapReviewErrorToUI(err)
+			if mapped.State() != mapper.ReviewUIUnknown {
+				ctxLogger.Debug().
+					Err(err).
+					Str("dictionary_id", dictionaryID).
+					Msgf("%s handled with mapped review error", op)
+
+				return mapper.SendReviewMappedError(c, mapped, dictionaryID)
+			}
+
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		return c.Send(
+			ui.FormatReviewWordCard(word),
+			&tele.SendOptions{
+				ParseMode:   tele.ModeHTML,
+				ReplyMarkup: ui.BuildReviewRateReplyKb(),
+			},
+		)
+
+	default:
+		return nil
+	}
 }
 
 func extractCallbackDictionaryID(c tele.Context) string {
@@ -761,50 +1116,3 @@ func extractCallbackDictionaryID(c tele.Context) string {
 
 	return ""
 }
-
-//func (h *BotHandlers) Review(c tele.Context) error {
-//	userID := c.Sender().ID
-//	dictID := parseDictID(c)
-//
-//	card, err := h.reviewLogic.Next(c, userID, dictID)
-//	if err != nil {
-//		return c.Send("Не удалось подобрать слово")
-//	}
-//
-//	kb := ui.BuildRateKeyboard(card.ID)
-//
-//	return c.Send(formatCard(card), kb)
-//}
-//
-//func (h *BotHandlers) RateCallback(c tele.Context) error {
-//	userID := c.Sender().ID
-//
-//	// data: "<wordID>:<grade>"
-//	data := c.Data()
-//
-//	parts := strings.Split(data, ":")
-//	if len(parts) != 2 {
-//		_ = c.Respond() // убрать "часики"
-//		return nil
-//	}
-//
-//	wordID := parts[0]
-//
-//	grade, err := strconv.Atoi(parts[1])
-//	if err != nil {
-//		_ = c.Respond()
-//		return nil
-//	}
-//
-//	// вызываем usecase (без tele.Context)
-//	err = h.reviewLogic.Rate(c, userID, wordID, grade)
-//	if err != nil {
-//		_ = c.Respond()
-//		return c.Send("Ошибка при сохранении оценки")
-//	}
-//
-//	// убрать "часики" у кнопки
-//	_ = c.Respond()
-//
-//	return c.Send("Оценка сохранена ✅")
-//}

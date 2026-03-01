@@ -74,12 +74,12 @@ func FormatDictionaryDetails(dict domain.Dictionary, words []domain.DictionaryWo
 		html.EscapeString(dict.Mode.HumanReadable()), html.EscapeString(dictModeHint)))
 
 	if len(words) == 0 {
-		b.WriteString("Примеры слов: пока нет слов в словаре")
+		b.WriteString("В этом словаре пока нет слов 💤")
 
 		return b.String()
 	}
 
-	b.WriteString("Примеры слов:\n")
+	b.WriteString("Несколько слов отсюда:\n")
 	for _, w := range words {
 		b.WriteString(
 			fmt.Sprintf("• %s — <tg-spoiler>%s</tg-spoiler>\n",
@@ -99,6 +99,15 @@ func FormatLearningWordCard(word domain.LearningWord) string {
 
 	b.WriteString("Примеры использования в речи:\n" +
 		"*тут может быть куча предложений, чтобы лучше понять контекст употребления, но пока их нет*")
+
+	return b.String()
+}
+
+func FormatReviewWordCard(word *domain.ReviewWord) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("🇬🇧 <b>%s</b> — %s\n\n",
+		html.EscapeString(word.Spelling), html.EscapeString(word.Transcription)))
+	b.WriteString(fmt.Sprintf("🇷🇺 <tg-spoiler>%s</tg-spoiler>", html.EscapeString(word.RUTranslation)))
 
 	return b.String()
 }

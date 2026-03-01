@@ -40,7 +40,7 @@ func (r *DictionaryRepo) ListPublic(ctx context.Context) ([]domain.Dictionary, e
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	defer rows.Close()
 
@@ -49,14 +49,14 @@ func (r *DictionaryRepo) ListPublic(ctx context.Context) ([]domain.Dictionary, e
 		d, scanErr := toDomainDictionary(rows)
 		if scanErr != nil {
 			err = scanErr
-			return nil, fmt.Errorf("%s failed: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
 		dictionaries = append(dictionaries, *d)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return dictionaries, nil
@@ -78,7 +78,7 @@ func (r *DictionaryRepo) GetByID(ctx context.Context, dictionaryID string) (*dom
 			return nil, domain.ErrDictionaryNotFound
 		}
 
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return dict, nil
@@ -98,7 +98,7 @@ func (r *DictionaryRepo) ExistsByID(ctx context.Context, dictionaryID string) (b
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, dictionaryID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return exists, nil
@@ -121,7 +121,7 @@ func (r *DictionaryRepo) ListRandomPreviewWords(
 
 	rows, err := r.db.QueryContext(ctx, query, dictionaryID, limit)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	defer rows.Close()
 
@@ -130,14 +130,14 @@ func (r *DictionaryRepo) ListRandomPreviewWords(
 		w, scanErr := toDomainDictionaryWordPreview(rows)
 		if scanErr != nil {
 			err = scanErr
-			return nil, fmt.Errorf("%s failed: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
 		words = append(words, *w)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return words, nil
@@ -170,7 +170,7 @@ func (r *DictionaryRepo) PickRandomUntrackedWord(
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return word, nil

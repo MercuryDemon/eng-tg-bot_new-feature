@@ -12,7 +12,7 @@ const serviceName = "eng-tg-bot"
 // TODO: add linters
 // TODO: add unit tests
 // TODO: add metrics
-// TODO: logger level audit
+// TODO: logger level audit + remove extra logs
 // TODO: mark places for alerts
 // TODO: add panics handling
 // TODO: adjust error logging msg in transport layer

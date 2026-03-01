@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/krezefal/eng-tg-bot/internal/domain"
@@ -49,6 +50,33 @@ func toDomainLearningWord(scanner rowScanner) (*domain.LearningWord, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert into learning word: %w", err)
+	}
+
+	return &w, nil
+}
+
+func toDomainReviewWord(scanner rowScanner) (*domain.ReviewWord, error) {
+	var w domain.ReviewWord
+	var nextReviewAt sql.NullTime
+
+	err := scanner.Scan(
+		&w.ID,
+		&w.DictionaryID,
+		&w.Spelling,
+		&w.Transcription,
+		&w.Audio,
+		&w.RUTranslation,
+		&w.EF,
+		&w.IntervalDays,
+		&w.Repetition,
+		&nextReviewAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert into review word: %w", err)
+	}
+
+	if nextReviewAt.Valid {
+		w.NextReviewAt = &nextReviewAt.Time
 	}
 
 	return &w, nil

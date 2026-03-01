@@ -39,12 +39,12 @@ func (r *SubscriptionsRepo) Subscribe(ctx context.Context, userID int64, diction
 
 	res, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return rows > 0, nil
@@ -68,7 +68,7 @@ func (r *SubscriptionsRepo) Unsubscribe(ctx context.Context, userID int64, dicti
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -76,23 +76,23 @@ func (r *SubscriptionsRepo) Unsubscribe(ctx context.Context, userID int64, dicti
 
 	res, err := tx.ExecContext(ctx, deleteSubscriptionQuery, userID, dictionaryID)
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 	if rows == 0 {
 		return false, nil
 	}
 
 	if _, err = tx.ExecContext(ctx, deleteProgressQuery, userID, dictionaryID); err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return rows > 0, nil
@@ -106,12 +106,12 @@ func (r *SubscriptionsRepo) ListByUser(ctx context.Context, userID int64) ([]dom
 		FROM user_dictionaries ud
 		INNER JOIN dictionaries d ON d.id = ud.dictionary_id
 		WHERE ud.user_id = $1
-		ORDER BY ud.subscribed_at DESC, d.title ASC;
+		ORDER BY ud.subscribed_at ASC, d.title ASC;
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	defer rows.Close()
 
@@ -119,14 +119,14 @@ func (r *SubscriptionsRepo) ListByUser(ctx context.Context, userID int64) ([]dom
 	for rows.Next() {
 		d, scanErr := toDomainDictionary(rows)
 		if scanErr != nil {
-			return nil, fmt.Errorf("%s failed: %w", op, scanErr)
+			return nil, fmt.Errorf("%s: %w", op, scanErr)
 		}
 
 		dictionaries = append(dictionaries, *d)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return dictionaries, nil
@@ -146,7 +146,7 @@ func (r *SubscriptionsRepo) IsSubscribedByUser(ctx context.Context, userID int64
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, userID, dictionaryID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("%s failed: %w", op, err)
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return exists, nil
@@ -166,12 +166,12 @@ func (r *SubscriptionsRepo) MarkLearningStarted(ctx context.Context, userID int6
 
 	res, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if rows == 0 {
 		return domain.ErrSubscriptionNotFound

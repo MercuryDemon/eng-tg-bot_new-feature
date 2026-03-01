@@ -62,7 +62,7 @@ func (u *Usecase) LearnByDictionaryNumber(
 
 	dictionaries, err := u.subsRepo.ListByUser(ctx, userID)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s failed: %w", op, err)
+		return nil, "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	if number > len(dictionaries) {
@@ -72,7 +72,7 @@ func (u *Usecase) LearnByDictionaryNumber(
 	dictionaryID := dictionaries[number-1].ID
 	word, err := u.startLearning(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, dictionaryID, fmt.Errorf("%s failed: %w", op, err)
+		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().
@@ -93,7 +93,7 @@ func (u *Usecase) LearnByDictionaryID(
 
 	exists, err := u.dictRepo.ExistsByID(ctx, dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if !exists {
 		return nil, domain.ErrDictionaryNotFound
@@ -101,7 +101,7 @@ func (u *Usecase) LearnByDictionaryID(
 
 	subscribed, err := u.subsRepo.IsSubscribedByUser(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if !subscribed {
 		return nil, domain.ErrSubscriptionNotFound
@@ -109,7 +109,7 @@ func (u *Usecase) LearnByDictionaryID(
 
 	word, err := u.startLearning(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().
@@ -130,7 +130,7 @@ func (u *Usecase) startLearning(
 
 	word, err := u.dictRepo.PickRandomUntrackedWord(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if word == nil {
 		u.clearPending(userID)
@@ -143,10 +143,10 @@ func (u *Usecase) startLearning(
 	})
 
 	if err = u.subsRepo.MarkLearningStarted(ctx, userID, dictionaryID); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if err = u.userRepo.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return word, nil
@@ -169,7 +169,7 @@ func (u *Usecase) ActiveDictionaryID(ctx context.Context, userID int64) (string,
 
 	dictionaryID, err := u.userRepo.GetActiveDictionaryID(ctx, userID)
 	if err != nil {
-		return "", fmt.Errorf("%s failed: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return dictionaryID, nil
@@ -180,7 +180,7 @@ func (u *Usecase) Back(ctx context.Context, userID int64) error {
 
 	u.clearPending(userID)
 	if err := u.userRepo.ClearActiveDictionaryID(ctx, userID); err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().
@@ -204,12 +204,12 @@ func (u *Usecase) applyDecision(
 	// TODO (high priority): set default ef, last_reviewed_at, etc - check how
 	// it was implemented in 1st version of bot
 	if err := u.wordStateRepo.UpsertStatus(ctx, userID, current.wordID, status); err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	nextWord, err := u.dictRepo.PickRandomUntrackedWord(ctx, userID, current.dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if nextWord == nil {
 		u.clearPending(userID)

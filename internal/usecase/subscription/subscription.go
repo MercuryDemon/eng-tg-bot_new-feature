@@ -36,16 +36,16 @@ func NewUsecase(
 	}
 }
 
-func (u *SubscriptionUsecase) Subscribe(ctx context.Context, userID int64, dictionaryID string) error {
+func (u *SubscriptionUsecase) Subscribe(ctx context.Context, userID int64, username, dictionaryID string) error {
 	const op = "Subscribe"
 
-	if err := u.ensureUserAndDictionaryByID(ctx, userID, dictionaryID); err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+	if err := u.ensureUserAndDictionaryByID(ctx, userID, username, dictionaryID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	inserted, err := u.subsRepo.Subscribe(ctx, userID, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if !inserted {
 		return domain.ErrAlreadySubscribed
@@ -64,7 +64,7 @@ func (u *SubscriptionUsecase) Unsubscribe(ctx context.Context, userID int64, dic
 
 	exists, err := u.dictRepo.ExistsByID(ctx, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if !exists {
 		return domain.ErrDictionaryNotFound
@@ -72,7 +72,7 @@ func (u *SubscriptionUsecase) Unsubscribe(ctx context.Context, userID int64, dic
 
 	removed, err := u.subsRepo.Unsubscribe(ctx, userID, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if !removed {
 		return domain.ErrSubscriptionNotFound
@@ -91,7 +91,7 @@ func (u *SubscriptionUsecase) EnsureSubscribed(ctx context.Context, userID int64
 
 	exists, err := u.dictRepo.ExistsByID(ctx, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if !exists {
 		return domain.ErrDictionaryNotFound
@@ -99,7 +99,7 @@ func (u *SubscriptionUsecase) EnsureSubscribed(ctx context.Context, userID int64
 
 	subscribed, err := u.subsRepo.IsSubscribedByUser(ctx, userID, dictionaryID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if !subscribed {
 		return domain.ErrSubscriptionNotFound
@@ -113,10 +113,10 @@ func (u *SubscriptionUsecase) EnsureSubscribed(ctx context.Context, userID int64
 	return nil
 }
 
-func (u *SubscriptionUsecase) ensureUserAndDictionaryByID(ctx context.Context, userID int64, dictionaryID string) error {
+func (u *SubscriptionUsecase) ensureUserAndDictionaryByID(ctx context.Context, userID int64, username, dictionaryID string) error {
 	// Create user for the case when the user picked removeAll before.
 	// Idempotent creation.
-	if err := u.userRepo.CreateUser(ctx, userID); err != nil {
+	if err := u.userRepo.CreateUser(ctx, userID, username); err != nil {
 		return err
 	}
 

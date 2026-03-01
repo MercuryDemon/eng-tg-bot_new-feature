@@ -25,8 +25,7 @@ const (
 	flagFileName = "file"
 	flagHelpName = "help"
 
-	defaultSeedFile = "seeds/random_pool_a2_basic_50.json"
-	envDBDSN        = "DB_DSN"
+	envDBDSN = "DB_DSN"
 )
 
 var logger = log.For(serviceName)
@@ -81,8 +80,7 @@ func run(help, up, down bool, filePath string) error {
 	}
 
 	if strings.TrimSpace(filePath) == "" {
-		logger.Warn().Msg("seed file path wasn't specified, using default path")
-		filePath = defaultSeedFile
+		return fmt.Errorf("seed filepath wasn't specified, use: --file [filepath]")
 	}
 
 	seed, err := loadSeed(filePath)

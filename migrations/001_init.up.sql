@@ -21,7 +21,7 @@ END$$;
 -- users
 CREATE TABLE IF NOT EXISTS users (
     tg_id                BIGINT PRIMARY KEY,
-    active_dictionary_id UUID NULL      -- активный словарь пользака
+    active_dictionary_id UUID NULL      -- активный словарь пользователя
 );
 
 -- dictionaries

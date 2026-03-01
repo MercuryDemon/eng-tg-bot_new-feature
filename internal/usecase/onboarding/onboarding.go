@@ -25,17 +25,18 @@ func NewUsecase(userRepo UserRepo, parentLogger *zerolog.Logger) *OnboardingUsec
 	}
 }
 
-func (u *OnboardingUsecase) Start(ctx context.Context, userID int64) error {
+func (u *OnboardingUsecase) Start(ctx context.Context, userID int64, username string) error {
 	const op = "Start"
 
 	// idempotence creation
-	err := u.userRepo.CreateUser(ctx, userID)
+	err := u.userRepo.CreateUser(ctx, userID, username)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().
 		Int64("user_id", userID).
+		Str("username", username).
 		Msgf("%s succeeded", op)
 
 	return nil
@@ -47,7 +48,7 @@ func (u *OnboardingUsecase) RemoveMe(ctx context.Context, userID int64) error {
 	// idempotence deletion
 	err := u.userRepo.DeleteUser(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("%s failed: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().

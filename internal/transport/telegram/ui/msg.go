@@ -22,15 +22,15 @@ const RemoveMsg = `Все данные удалены 🫥`
 // Catalog
 const (
 	PublicDictionariesEmptyMsg  = `Пока нет опубликованных словарей 💤`
-	UserDictionariesEmptyMsg    = `Ты пока не подписан ни на один словарь 💤`
+	UserDictionariesEmptyMsg    = `У тебя нет добавленных словарей 💤`
 	PublicDictionariesHeaderMsg = `Доступные словари:`
 	UserDictionariesHeaderMsg   = `Твои словари:`
 )
 
 // Subscription
 const (
-	DictionarySubscribedMsg           = `Подписка оформлена ✅`
-	DictionaryAlreadySubscribedMsg    = `Ты уже подписан на этот словарь 👌`
+	DictionarySubscribedMsg           = `Добавил в "Мои словари" ✅`
+	DictionaryAlreadySubscribedMsg    = `Ты уже добавлял этот словарь 👌`
 	DictionaryUnsubscribeConfirmMsg   = `❕Весь прогресс по словам будет стёрт. Ты уверен, что хочешь отписаться?`
 	DictionaryUnsubscribedMsg         = `Подписка отменена ✅`
 	DictionaryUnsubscribeCanceledMsg  = `Ты по-прежнему подписан на этот словарь 👌`
@@ -40,24 +40,30 @@ const (
 
 // Learning
 const (
-	LearnUsageMsg                   = `Использование: /learn <номер словаря из списка>`
-	LearnInvalidDictionaryNumberMsg = `Не нашел словарь с таким номером. Посмотри /mydict и попробуй снова`
-	LearnNotSubscribedMsg           = `Сначала подпишись на словарь, потом приступай к изучению`
-	LearnNotStartedMsg              = `Сначала открой обучение через /learn <номер словаря> или кнопку «Учить» у себя в словарях`
+	LearnUsageMsg      = `Использование: /learn <номер словаря из списка>`
+	LearnNotStartedMsg = `Сначала открой обучение через /learn <номер словаря> или кнопку «Учить» у себя в словарях`
 
 	LearnCompletedMsg = `
-Поздравляю, ты прошел словарь! 🎉🥳🎉
+Ты прошел словарь! 🎉🥳🎉
 А ты уверен, что помнишь все слова из него?
 `
 )
 
 // Review
 const (
-	LearnReviewWIPMsg = `WIP`
+	ReviewUsageMsg          = `Использование: /review <номер словаря из списка>`
+	ReviewIntroMsg          = `🕹️ Я начну показывать слова из этого словаря, которые мы уже рассматривали — отмечай, насколько хорошо их ты помнишь, нажимая на кнопки внизу экрана`
+	ReviewNoDueMsg          = `У тебя отличный прогресс. Я уверен, тебе пока не нужно повторять слова`
+	ReviewEmptyWordsListMsg = `Сначала изучи слова, а после заходи, и будем вместе их повторять ☕️`
+	ReviewCompletedMsg      = `Ты повторил все изученные слова из этого словаря 🥳`
 )
 
 // Other messages
 const (
-	InternalErrorMsg = `Бип-буп, я сломался 😵‍💫`
-	ToMainMenuMsg    = "⏮️ Возврат в меню"
+	ToMainMenuMsg = "⏮️ Возврат в меню"
+
+	InternalErrorMsg           = `Бип-буп, я сломался 😵‍💫`
+	InvalidDictionaryNumberMsg = `Не нашел словарь с таким номером. Посмотри /mydict и попробуй снова`
+	NotSubscribedMsg           = `Сначала добавь этот словарь к себе, потом приступай к изучению`
+	ActiveDictMissingMsg       = `Кажется я не вижу словарь, в котором ты находишься 🫨 — открой его еще раз и зайди сюда`
 )

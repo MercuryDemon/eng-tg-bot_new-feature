@@ -2,15 +2,38 @@ package ui
 
 import tele "gopkg.in/telebot.v4"
 
+// Only reply btns contain emoji
 const (
 	MainMenuDictText   = "📚 Словари (публичные)"
 	MainMenuMyDictText = "📖 Мои словари"
 	MainMenuHelpText   = "❔ Помощь"
 
-	LearnAddText    = "✍️ Добавить в словарь"
-	LearnBlockText  = "🙅‍♂️ Не добавлять — знаю это слово"
-	LearnReviewText = "🧠 Перейти к повторению слов"
-	LearnBackText   = "🏠 В главное меню"
+	AddDictText     = "Добавить словарь"
+	DictDetailsText = "Подробнее"
+	ToDictsText     = "К словарям"
+	RemoveDictText  = "Отписаться"
+
+	ConfirnUnsubText = "Да"
+	RejectUnsubText  = "Нет"
+
+	StartLearnText  = "Учить"
+	StartReviewText = "Повторить"
+
+	LearnAddText       = "✍️ Добавить в словарь"
+	LearnBlockText     = "🙅‍♂️ Не добавлять — знаю это слово"
+	LearnReviewText    = "🧠 Перейти к повторению слов"
+	LearnReviewNowText = "Перейти к повторению сейчас"
+
+	ReviewStartText   = "🚀 Старт"
+	ReviewRestartText = "🔁 Повторить еще раз"
+	ReviewStopText    = "️🏁 Закончить подход"
+	ReviewRate1Text   = "Не помню"
+	ReviewRate2Text   = "Трудно"
+	ReviewRate3Text   = "Легко"
+	ReviewRate4Text   = "Помню!"
+	ReviewForceStart  = "Все равно хочу попрактиковаться"
+
+	ToMainMenuText = "🏠 В главное меню"
 )
 
 func BuildMainMenuReplyKb() *tele.ReplyMarkup {
@@ -32,8 +55,8 @@ func BuildMainMenuReplyKb() *tele.ReplyMarkup {
 func BuildPublicDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnSubscribe := markup.Data("Подписаться", "dict_subscribe", dictionaryID)
-	btnDetails := markup.Data("Подробнее", "dict_details", dictionaryID)
+	btnSubscribe := markup.Data(AddDictText, "dict_subscribe", dictionaryID)
+	btnDetails := markup.Data(DictDetailsText, "dict_details", dictionaryID)
 
 	markup.Inline(
 		markup.Row(btnSubscribe, btnDetails),
@@ -45,9 +68,9 @@ func BuildPublicDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 func BuildUserDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnLearn := markup.Data("Учить", "dict_learn", dictionaryID)
-	btnReview := markup.Data("Повторить", "dict_review", dictionaryID)
-	btnUnsubscribe := markup.Data("Отписаться", "dict_unsubscribe", dictionaryID)
+	btnLearn := markup.Data(StartLearnText, "dict_learn", dictionaryID)
+	btnReview := markup.Data(StartReviewText, "dict_review", dictionaryID)
+	btnUnsubscribe := markup.Data(RemoveDictText, "dict_unsubscribe", dictionaryID)
 
 	markup.Inline(
 		markup.Row(btnLearn),
@@ -60,8 +83,8 @@ func BuildUserDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 func BuildDictionaryDetailsInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnSubscribe := markup.Data("Подписаться", "dict_subscribe", dictionaryID)
-	btnDetails := markup.Data("К словарям", "to_dicts")
+	btnSubscribe := markup.Data(AddDictText, "dict_subscribe", dictionaryID)
+	btnDetails := markup.Data(ToDictsText, "to_dicts")
 
 	markup.Inline(
 		markup.Row(btnSubscribe, btnDetails),
@@ -73,8 +96,8 @@ func BuildDictionaryDetailsInlineKb(dictionaryID string) *tele.ReplyMarkup {
 func BuildUnsubscribeConfirmInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnConfirm := markup.Data("Да", "dict_confirm_unsubscribe", dictionaryID)
-	btnReject := markup.Data("Нет", "dict_reject_unsubscribe", dictionaryID)
+	btnConfirm := markup.Data(ConfirnUnsubText, "dict_confirm_unsubscribe", dictionaryID)
+	btnReject := markup.Data(RejectUnsubText, "dict_reject_unsubscribe", dictionaryID)
 
 	markup.Inline(
 		markup.Row(btnConfirm, btnReject),
@@ -89,7 +112,7 @@ func BuildLearningReplyKb() *tele.ReplyMarkup {
 	btnAdd := markup.Text(LearnAddText)
 	btnBlock := markup.Text(LearnBlockText)
 	btnReview := markup.Text(LearnReviewText)
-	btnBack := markup.Text(LearnBackText)
+	btnBack := markup.Text(ToMainMenuText)
 
 	markup.Reply(
 		markup.Row(btnAdd, btnBlock),
@@ -103,8 +126,76 @@ func BuildLearningReplyKb() *tele.ReplyMarkup {
 func BuildLearningCompletedInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnReview := markup.Data("Перейти к повторению сейчас", "dict_review", dictionaryID)
+	btnReview := markup.Data(LearnReviewNowText, "dict_review", dictionaryID)
 	markup.Inline(markup.Row(btnReview))
+
+	return markup
+}
+
+func BuildLearningCompletedReplyKb() *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{ResizeKeyboard: true}
+
+	btnReview := markup.Text(LearnReviewText)
+	btnBack := markup.Text(ToMainMenuText)
+
+	markup.Reply(
+		markup.Row(btnReview),
+		markup.Row(btnBack),
+	)
+
+	return markup
+}
+
+func BuildReviewIntroReplyKb() *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{ResizeKeyboard: true}
+
+	btnStart := markup.Text(ReviewStartText)
+	btnMain := markup.Text(ToMainMenuText)
+
+	markup.Reply(
+		markup.Row(btnStart),
+		markup.Row(btnMain),
+	)
+
+	return markup
+}
+
+func BuildReviewRateReplyKb() *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{ResizeKeyboard: true}
+
+	btn1 := markup.Text(ReviewRate1Text)
+	btn2 := markup.Text(ReviewRate2Text)
+	btn3 := markup.Text(ReviewRate3Text)
+	btn4 := markup.Text(ReviewRate4Text)
+	btnStop := markup.Text(ReviewStopText)
+
+	markup.Reply(
+		markup.Row(btn1, btn2, btn3, btn4),
+		markup.Row(btnStop),
+	)
+
+	return markup
+}
+
+func BuildReviewForceInlineKb(dictionaryID string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+
+	btnForce := markup.Data(ReviewForceStart, "review_force", dictionaryID)
+	markup.Inline(markup.Row(btnForce))
+
+	return markup
+}
+
+func BuildReviewFinishReplyKb() *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{ResizeKeyboard: true}
+
+	btnRestart := markup.Text(ReviewRestartText)
+	btnMain := markup.Text(ToMainMenuText)
+
+	markup.Reply(
+		markup.Row(btnRestart),
+		markup.Row(btnMain),
+	)
 
 	return markup
 }

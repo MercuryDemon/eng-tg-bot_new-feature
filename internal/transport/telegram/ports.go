@@ -7,7 +7,7 @@ import (
 )
 
 type OnboardingUsecase interface {
-	Start(ctx context.Context, userID int64) error
+	Start(ctx context.Context, userID int64, username string) error
 	RemoveMe(ctx context.Context, userID int64) error
 }
 
@@ -18,7 +18,7 @@ type CatalogUsecase interface {
 }
 
 type SubscriptionUsecase interface {
-	Subscribe(ctx context.Context, userID int64, dictionaryID string) error
+	Subscribe(ctx context.Context, userID int64, username, dictionaryID string) error
 	Unsubscribe(ctx context.Context, userID int64, dictionaryID string) error
 	EnsureSubscribed(ctx context.Context, userID int64, dictionaryID string) error
 }
@@ -33,6 +33,18 @@ type LearningUsecase interface {
 }
 
 type ReviewUsecase interface {
-	Review(ctx context.Context, userID int64, dictionaryID string) error
-	RateCallback(ctx context.Context, userID int64, wordID string, rate int) error
+	PrepareByDictionaryNumber(ctx context.Context, userID int64, number int) (string, error)
+	PrepareByDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
+	ActiveDictionaryID(ctx context.Context, userID int64) (string, error)
+	StartDueRound(ctx context.Context, userID int64) (*domain.ReviewWord, string, error)
+	StartForceRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord, error)
+	RateCurrent(ctx context.Context, userID int64, grade int) (*domain.ReviewWord, string, error)
+	Stop(ctx context.Context, userID int64) error
 }
+
+// TODO: move ActiveDictionaryID from 2 usecases above to this one.
+//type ActiveDictionaryUsecase interface {
+//	GetActiveDictionaryID(ctx context.Context, userID int64) (string, error)
+//	SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
+//	ClearActiveDictionaryID(ctx context.Context, userID int64) error
+//}

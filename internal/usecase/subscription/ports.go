@@ -3,7 +3,7 @@ package subscription
 import "context"
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, id int64) error
+	CreateUser(ctx context.Context, id int64, username string) error
 }
 
 type DictionaryRepo interface {

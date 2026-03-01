@@ -33,11 +33,11 @@ func (lr LearningUIResult) Message() string {
 func MapLearningErrorToUI(err error) LearningUIResult {
 	switch {
 	case errors.Is(err, domain.ErrInvalidDictionaryNumber):
-		return LearningUIResult{state: LearningUIMainMenu, msg: ui.LearnInvalidDictionaryNumberMsg}
+		return LearningUIResult{state: LearningUIMainMenu, msg: ui.InvalidDictionaryNumberMsg}
 	case errors.Is(err, domain.ErrDictionaryNotFound):
 		return LearningUIResult{state: LearningUIMainMenu, msg: ui.DictionaryNotFoundMsg}
 	case errors.Is(err, domain.ErrSubscriptionNotFound):
-		return LearningUIResult{state: LearningUIMainMenu, msg: ui.LearnNotSubscribedMsg}
+		return LearningUIResult{state: LearningUIMainMenu, msg: ui.NotSubscribedMsg}
 	case errors.Is(err, domain.ErrLearningNotStarted):
 		return LearningUIResult{state: LearningUIMainMenu, msg: ui.LearnNotStartedMsg}
 	case errors.Is(err, domain.ErrNoWordsForLearning):
@@ -52,10 +52,7 @@ func SendLearningMappedError(c tele.Context, mapped LearningUIResult, dictionary
 	case LearningUIMainMenu:
 		return c.Send(mapped.msg, ui.BuildMainMenuReplyKb())
 	case LearningUICompleted:
-		return c.Send(
-			mapped.msg,
-			&tele.SendOptions{ReplyMarkup: ui.BuildLearningCompletedInlineKb(dictionaryID)},
-		)
+		return c.Send(mapped.msg, ui.BuildLearningCompletedReplyKb())
 	default:
 		return nil
 	}

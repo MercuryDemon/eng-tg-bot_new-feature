@@ -34,7 +34,7 @@ func (u *CatalogUsecase) PublicDictionaries(ctx context.Context) ([]domain.Dicti
 
 	dicts, err := u.dictRepo.ListPublic(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().Int("count", len(dicts)).Msgf("%s succeeded", op)
@@ -47,7 +47,7 @@ func (u *CatalogUsecase) UserDictionaries(ctx context.Context, userID int64) ([]
 
 	dicts, err := u.subsRepo.ListByUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().
@@ -67,12 +67,12 @@ func (u *CatalogUsecase) DictionaryDetails(
 
 	dict, err := u.dictRepo.GetByID(ctx, dictionaryID)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	words, err := u.dictRepo.ListRandomPreviewWords(ctx, dictionaryID, 5)
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	u.logger.Debug().

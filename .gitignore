@@ -1,5 +1,6 @@
 .env
 .env.local
+AGENT.md
 
 .gomodcache/
 .gocache/
