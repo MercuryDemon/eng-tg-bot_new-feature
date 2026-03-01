@@ -41,10 +41,10 @@ go build -o ./bin/migrator ./cmd/migrator
 ```bash
 mkdir -p ./bin
 go build -o ./bin/seeder ./cmd/seeder
-./bin/seeder --up
+./bin/seeder --up --file [filepath]
 ```
 
-Опционально с указанием файла:
+Запуск с дефолтным сидом:
 
 ```bash
 ./bin/seeder --up --file ./seeds/random_pool_a2_basic_50.json
